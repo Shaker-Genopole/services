@@ -29,41 +29,23 @@ _Figure 1. Platform architecture ([PDF](docs/architecture.pdf), source [docs/arc
 ### Proof pipeline
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Helvetica, Arial, sans-serif", "actorBkg": "#dae8fc", "actorBorder": "#6c8ebf", "actorTextColor": "#132a4a", "actorLineColor": "#6c8ebf", "signalColor": "#333333", "signalTextColor": "#1f2933", "noteBkgColor": "#fff2cc", "noteBorderColor": "#d6b656", "noteTextColor": "#3d2c00", "labelBoxBkgColor": "#e1d5e7", "labelBoxBorderColor": "#9673a6", "labelTextColor": "#2c1748", "loopTextColor": "#2c1748", "sequenceNumberColor": "#ffffff"}}}%%
-sequenceDiagram
-  box rgb(245, 245, 245) Edge
-    participant E as edge-agent
-  end
-  box rgb(255, 242, 204) Interface
-    participant I as telemetry-ingest
-  end
-  box rgb(225, 213, 231) Orchestration
-    participant S as scheduler
-    participant Q as RabbitMQ
-    participant T as taskmanager
-  end
-  box rgb(213, 232, 212) Proving
-    participant W as prover-worker
-  end
-  box rgb(218, 232, 252) Storage & chain
-    participant DB as MongoDB
-    participant X as Sui zk_sla
-  end
-  loop every second
-    E->>I: pseudonymised readings
-    I->>DB: insert (latency = received − sampled)
-  end
-  S->>DB: period ended? claim it once
-  S->>Q: prove.sla
-  Q->>W: job (scale out with replicas)
-  W->>DB: period telemetry + sealed deployment
-  rect rgb(213, 232, 212)
-    W->>W: SLA check → witness → Groth16 prove + verify
-  end
-  W->>X: submit_proof
-  W->>Q: prove.result
-  Q->>T: result
-  T->>DB: proof ledger, period status, KPIs
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, Helvetica, sans-serif","fontSize":"22px","lineColor":"#4d4d4d"},"flowchart":{"padding":18,"nodeSpacing":50,"rankSpacing":60,"curve":"basis","htmlLabels":true}}}%%
+flowchart TB
+  e(["&nbsp;<b>Edge agent</b>&nbsp;"]) -->|"1 readings"| i["&nbsp;<b>Ingest</b>&nbsp;"]
+  i -->|"2 latency"| s["&nbsp;<b>Scheduler</b>&nbsp;"]
+  s -->|"3 job"| w{{"&nbsp;<b>Groth16 proof</b>&nbsp;"}}
+  w -->|"4 submit"| x(["&nbsp;<b>Sui verifies</b>&nbsp;"])
+  x -->|"5 settle"| r[("&nbsp;<b>Reward or penalty</b>&nbsp;")]
+
+  classDef edge fill:#f8cecc,stroke:#b85450,color:#3d0d0b,stroke-width:2px
+  classDef cloud fill:#fff2cc,stroke:#d6b656,color:#3d2c00,stroke-width:2px
+  classDef proof fill:#d5e8d4,stroke:#82b366,color:#14300f,stroke-width:2px
+  classDef chain fill:#dae8fc,stroke:#6c8ebf,color:#132a4a,stroke-width:2px
+  class e edge
+  class i,s cloud
+  class w proof
+  class x,r chain
+  linkStyle 0,1,2,3,4 stroke:#4d4d4d,stroke-width:2.5px
 ```
 
 | Service            | Responsibility                                                                                                                                                | Scales by                                       |
