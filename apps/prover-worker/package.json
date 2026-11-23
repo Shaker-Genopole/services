@@ -1,0 +1,25 @@
+{
+  "name": "@zk-sla/prover-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/index.js",
+    "dev": "node --watch --experimental-strip-types src/index.ts"
+  },
+  "dependencies": {
+    "@zk-sla/shared-configs": "workspace:*",
+    "@zk-sla/shared-connections": "workspace:*",
+    "@zk-sla/shared-entities": "workspace:*",
+    "@zk-sla/shared-utils": "workspace:*",
+    "@zk-sla/sui-client": "workspace:*",
+    "@zk-sla/circuits": "github:Shaker-Genopole/zk-circuits#main",
+    "zod": "^4.3.6"
+  }
+}
