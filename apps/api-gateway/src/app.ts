@@ -1,5 +1,5 @@
 import express, { type Express } from 'express';
-import client from 'prom-client';
+import client from '@prometheus-io/client';
 import type { Db } from 'mongodb';
 import type { Logger } from '@zk-sla/shared-utils';
 import type { Config } from './config.js';
@@ -38,7 +38,7 @@ export function createApp(deps: Deps): Express {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
       res.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     }
     if (req.method === 'OPTIONS') return void res.sendStatus(204);
     const end = latency.startTimer({ method: req.method });

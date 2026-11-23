@@ -1,5 +1,5 @@
 import express, { type Express } from 'express';
-import client from 'prom-client';
+import client from '@prometheus-io/client';
 import { z } from 'zod';
 import type { TelemetryAlert, TelemetryBatch, TelemetryDocument } from '@zk-sla/shared-entities';
 import { safeEqual, type Logger } from '@zk-sla/shared-utils';
