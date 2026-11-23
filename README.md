@@ -29,13 +29,19 @@ _Figure 1. Platform architecture ([PDF](docs/architecture.pdf), source [docs/arc
 ### Proof pipeline
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, Helvetica, sans-serif","fontSize":"22px","lineColor":"#4d4d4d"},"flowchart":{"padding":18,"nodeSpacing":50,"rankSpacing":60,"curve":"basis","htmlLabels":true}}}%%
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Arial, Helvetica, sans-serif","fontSize":"22px","lineColor":"#4d4d4d","edgeLabelBackground":"#ffffff"},"flowchart":{"padding":18,"nodeSpacing":40,"rankSpacing":95,"curve":"basis","htmlLabels":true}}}%%
 flowchart TB
-  e(["&nbsp;<b>Edge agent</b>&nbsp;"]) -->|"1 readings"| i["&nbsp;<b>Ingest</b>&nbsp;"]
-  i -->|"2 latency"| s["&nbsp;<b>Scheduler</b>&nbsp;"]
-  s -->|"3 job"| w{{"&nbsp;<b>Groth16 proof</b>&nbsp;"}}
-  w -->|"4 submit"| x(["&nbsp;<b>Sui verifies</b>&nbsp;"])
-  x -->|"5 settle"| r[("&nbsp;<b>Reward or penalty</b>&nbsp;")]
+  subgraph A["<b>Edge and cloud</b>&nbsp;&nbsp;&nbsp;"]
+    direction LR
+    e(["&nbsp;<b>Edge agent</b>&nbsp;"]) -->|"1 readings"| i["&nbsp;<b>Ingest</b>&nbsp;"]
+    i -->|"2 latency"| s["&nbsp;<b>Scheduler</b>&nbsp;"]
+  end
+  subgraph B["<b>Proof and chain</b>&nbsp;&nbsp;&nbsp;"]
+    direction LR
+    w{{"&nbsp;<b>Groth16 proof</b>&nbsp;"}} -->|"4 submit"| x(["&nbsp;<b>Sui verifies</b>&nbsp;"])
+    x -->|"5 settle"| r[("&nbsp;<b>Reward or penalty</b>&nbsp;")]
+  end
+  A -->|"3 job"| B
 
   classDef edge fill:#f8cecc,stroke:#b85450,color:#3d0d0b,stroke-width:2px
   classDef cloud fill:#fff2cc,stroke:#d6b656,color:#3d2c00,stroke-width:2px
@@ -45,6 +51,8 @@ flowchart TB
   class i,s cloud
   class w proof
   class x,r chain
+  style A fill:#fffaf0,stroke:#d6b656,stroke-width:2px,stroke-dasharray:6 4
+  style B fill:#f3f9f1,stroke:#82b366,stroke-width:2px,stroke-dasharray:6 4
   linkStyle 0,1,2,3,4 stroke:#4d4d4d,stroke-width:2.5px
 ```
 
