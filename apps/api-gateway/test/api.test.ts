@@ -262,3 +262,72 @@ describe('negotiation', () => {
     expect(JSON.stringify(offer.body)).not.toContain('950000');
   });
 });
+
+describe('wallet linking', () => {
+  test('a signed challenge links the wallet; forged or reused signatures are rejected', async () => {
+    const { Ed25519Keypair } = await import('@mysten/sui/keypairs/ed25519');
+    const wallet = new Ed25519Keypair();
+    const address = wallet.toSuiAddress();
+    const login = await api('POST', '/api/auth/login', { email: 'noc@edge.test', password: 'pw-12345678' });
+    const token = login.body.token;
+
+    const challenge = await api('POST', '/api/auth/wallet/challenge', {}, token);
+    expect(challenge.status).toBe(200);
+    expect(challenge.body.message).toContain('Nonce:');
+
+    const forged = await new Ed25519Keypair().signPersonalMessage(
+      new TextEncoder().encode(challenge.body.message),
+    );
+    expect(
+      (await api('POST', '/api/auth/wallet', { address, signature: forged.signature }, token)).status,
+    ).toBe(401);
+
+    const signed = await wallet.signPersonalMessage(new TextEncoder().encode(challenge.body.message));
+    const linked = await api('POST', '/api/auth/wallet', { address, signature: signed.signature }, token);
+    expect(linked.status).toBe(200);
+    expect(linked.body.suiAddress).toBe(address);
+    expect(linked.body.walletChallenge).toBeUndefined();
+
+    // The challenge is single-use.
+    expect(
+      (await api('POST', '/api/auth/wallet', { address, signature: signed.signature }, token)).status,
+    ).toBe(409);
+
+    const providers = await api('GET', '/api/auth/providers', undefined, token);
+    expect(providers.body.find((p: { suiAddress?: string }) => p.suiAddress === address)).toBeTruthy();
+
+    // Another account cannot claim the same wallet.
+    const other = await api('POST', '/api/auth/signup', {
+      email: 'other@edge.test',
+      password: 'pw-12345678',
+      role: 'provider',
+      organisation: 'Other Edge',
+    });
+    const c2 = await api('POST', '/api/auth/wallet/challenge', {}, other.body.token);
+    const s2 = await wallet.signPersonalMessage(new TextEncoder().encode(c2.body.message));
+    expect(
+      (await api('POST', '/api/auth/wallet', { address, signature: s2.signature }, other.body.token)).status,
+    ).toBe(409);
+  });
+});
+
+describe('account routes', () => {
+  test('profile update, wallet unlink and sign-out', async () => {
+    const login = await api('POST', '/api/auth/login', { email: 'noc@edge.test', password: 'pw-12345678' });
+    const token = login.body.token;
+    const updated = await api('PATCH', '/api/auth/me', { organisation: 'Edge Cloud SAS' }, token);
+    expect(updated.body.organisation).toBe('Edge Cloud SAS');
+    expect((await api('PATCH', '/api/auth/me', { role: 'admin' }, token)).status).toBe(400);
+    const unlink = await fetch(`${url}/api/auth/wallet`, {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(unlink.status).toBe(204);
+    expect((await api('GET', '/api/auth/me', undefined, token)).body.suiAddress).toBeUndefined();
+    const out = await fetch(`${url}/api/auth/logout`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(out.status).toBe(204);
+  });
+});

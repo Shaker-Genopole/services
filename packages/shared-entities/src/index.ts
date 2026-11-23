@@ -11,6 +11,8 @@ export interface Account {
   role: Role;
   organisation: string;
   suiAddress?: string;
+  /** Pending one-time message the wallet must sign to prove ownership of `suiAddress`. */
+  walletChallenge?: { message: string; expiresAt: Date };
   createdAt: Date;
 }
 
