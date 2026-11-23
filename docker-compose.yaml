@@ -1,0 +1,123 @@
+# Local stack built from source.  cp .env.example .env && docker compose up --build
+# Scale the proving pool:          docker compose up --scale prover-worker=4
+
+x-service: &service
+  restart: unless-stopped
+  env_file: .env
+  depends_on:
+    mongo:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+
+x-build: &build
+  context: .
+  dockerfile: Dockerfile
+
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: zksla
+      RABBITMQ_DEFAULT_PASS: zksla
+    ports: ['15672:15672']
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 5s
+      retries: 30
+
+  api-gateway:
+    <<: *service
+    build: { <<: *build, args: { SERVICE: api-gateway } }
+    image: ghcr.io/shaker-genopole/api-gateway:local
+    environment: { PORT: 8080 }
+    ports: ['8080:8080']
+
+  telemetry-ingest:
+    <<: *service
+    build: { <<: *build, args: { SERVICE: telemetry-ingest } }
+    image: ghcr.io/shaker-genopole/telemetry-ingest:local
+    environment: { PORT: 8081 }
+    ports: ['8081:8081']
+
+  scheduler:
+    <<: *service
+    build: { <<: *build, args: { SERVICE: scheduler } }
+    image: ghcr.io/shaker-genopole/scheduler:local
+    environment: { SCHEDULER_TICK_MS: 10000 }
+
+  taskmanager:
+    <<: *service
+    build: { <<: *build, args: { SERVICE: taskmanager } }
+    image: ghcr.io/shaker-genopole/taskmanager:local
+
+  prover-worker:
+    <<: *service
+    build: { <<: *build, args: { SERVICE: prover-worker } }
+    image: ghcr.io/shaker-genopole/prover-worker:local
+    deploy:
+      replicas: 2
+      resources:
+        limits: { cpus: '2', memory: 2g }
+
+  chain-indexer:
+    <<: *service
+    profiles: [chain]
+    build: { <<: *build, args: { SERVICE: chain-indexer } }
+    image: ghcr.io/shaker-genopole/chain-indexer:local
+
+  # ---- demo: seeds accounts, an SLA and a deployment, then two edge gateways stream Kaggle-shaped telemetry
+  seed:
+    image: node:22-slim
+    profiles: [demo]
+    env_file: .env
+    environment:
+      API_URL: http://api-gateway:8080
+      OUT_FILE: /shared/agreement-id
+    volumes: ['./scripts:/scripts:ro', 'demo-shared:/shared']
+    command: ['node', '/scripts/seed-demo.mjs']
+    depends_on: [api-gateway]
+
+  edge-icu:
+    <<: *service
+    profiles: [demo]
+    build: { <<: *build, args: { SERVICE: edge-agent } }
+    image: ghcr.io/shaker-genopole/edge-agent:local
+    environment:
+      INGEST_URL: http://telemetry-ingest:8081
+      EDGE_NODE_ID: edge-icu
+      EDGE_API_KEY: dev-edge-icu-key
+      AGREEMENT_ID_FILE: /shared/agreement-id
+      BATCH_INTERVAL_MS: 1000
+      DATASET_DIR: /data
+      DEVICES: '[{"deviceId":"ecg-icu-bed-03","kind":"ecg","intervalSec":2},{"deviceId":"spo2-icu-bed-03","kind":"spo2","intervalSec":5},{"deviceId":"cam-icu-corridor","kind":"camera","intervalSec":10}]'
+    volumes: ['demo-shared:/shared:ro', './data:/data:ro']
+
+  edge-ward:
+    <<: *service
+    profiles: [demo]
+    image: ghcr.io/shaker-genopole/edge-agent:local
+    environment:
+      INGEST_URL: http://telemetry-ingest:8081
+      EDGE_NODE_ID: edge-ward
+      EDGE_API_KEY: dev-edge-ward-key
+      AGREEMENT_ID_FILE: /shared/agreement-id
+      BATCH_INTERVAL_MS: 1000
+      DATASET_DIR: /data
+      DEVICES: '[{"deviceId":"cgm-ward-b-07","kind":"cgm","intervalSec":60},{"deviceId":"temp-ward-b-07","kind":"temperature","intervalSec":30},{"deviceId":"bp-ward-b-07","kind":"blood_pressure","intervalSec":60}]'
+    volumes: ['demo-shared:/shared:ro', './data:/data:ro']
+    depends_on: [edge-icu]
+
+volumes:
+  mongo-data:
+  demo-shared:
