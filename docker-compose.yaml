@@ -78,7 +78,7 @@ services:
 
   # ---- demo: seeds accounts, an SLA and a deployment, then two edge gateways stream Kaggle-shaped telemetry
   seed:
-    image: node:22-slim
+    image: node:24-slim
     profiles: [demo]
     env_file: .env
     environment:

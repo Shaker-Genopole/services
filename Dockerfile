@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # One image recipe for every service:  docker build --build-arg SERVICE=api-gateway .
-ARG NODE_VERSION=22
+ARG NODE_VERSION=24
 
 FROM node:${NODE_VERSION}-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
