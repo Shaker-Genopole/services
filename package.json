@@ -1,0 +1,31 @@
+{
+  "name": "zk-sla-services",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Dockerised microservices for zero-knowledge SLA verification in healthcare edge-cloud IoT deployments.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --workspace-concurrency=4 run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "dev": "docker compose up --build",
+    "datasets:fetch": "bash packages/datasets/scripts/fetch-kaggle.sh data"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.10.1",
+    "mongodb": "^7.9.1",
+    "mongodb-memory-server": "^11.4.0",
+    "prettier": "^3.8.3",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.4"
+  }
+}
